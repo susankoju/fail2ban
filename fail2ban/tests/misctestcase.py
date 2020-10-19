@@ -34,7 +34,7 @@ from StringIO import StringIO
 from utils import LogCaptureTestCase, logSys as DefLogSys
 
 from ..helpers import formatExceptionInfo, mbasename, TraceBack, FormatterWithTraceBack, getLogger, \
-	splitwords, uni_decode, uni_string
+	getVerbosityFormat, splitwords, uni_decode, uni_string
 from ..server.mytime import MyTime
 
 
@@ -201,7 +201,8 @@ class TestsUtilsTest(LogCaptureTestCase):
 		uni_decode((b'test\xcf' if sys.version_info >= (3,) else u'test\xcf'))
 		uni_string(b'test\xcf')
 		uni_string('test\xcf')
-		uni_string(u'test\xcf')
+		if sys.version_info < (3,) and 'PyPy' not in sys.version:
+			uni_string(u'test\xcf')
 
 	def testSafeLogging(self):
 		# logging should be exception-safe, to avoid possible errors (concat, str. conversion, representation failures, etc)
@@ -403,6 +404,14 @@ class TestsUtilsTest(LogCaptureTestCase):
 			self.assertSortedEqual, ['A'], ['C', 'B'])
 		self._testAssertionErrorRE(r"\['A', 'B'\] != \['B', 'C'\]",
 			self.assertSortedEqual, ['A', 'B'], ['C', 'B'])
+
+	def testVerbosityFormat(self):
+		self.assertEqual(getVerbosityFormat(1),
+			'%(asctime)s %(name)-24s[%(process)d]: %(levelname)-7s %(message)s')
+		self.assertEqual(getVerbosityFormat(1, padding=False),
+			'%(asctime)s %(name)s[%(process)d]: %(levelname)s %(message)s')
+		self.assertEqual(getVerbosityFormat(1, addtime=False, padding=False),
+			'%(name)s[%(process)d]: %(levelname)s %(message)s')
 
 	def testFormatterWithTraceBack(self):
 		strout = StringIO()

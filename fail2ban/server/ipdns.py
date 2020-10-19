@@ -337,7 +337,7 @@ class IPAddr(object):
 		return repr(self.ntoa)
 
 	def __str__(self):
-		return self.ntoa
+		return self.ntoa if isinstance(self.ntoa, basestring) else str(self.ntoa)
 
 	def __reduce__(self):
 		"""IPAddr pickle-handler, that simply wraps IPAddr to the str
@@ -516,6 +516,11 @@ class IPAddr(object):
 			return False
 		
 		return (self.addr & mask) == net.addr
+
+	def contains(self, ip):
+		"""Return whether the object (as network) contains given IP
+		"""
+		return isinstance(ip, IPAddr) and (ip == self or ip.isInNet(self))
 
 	# Pre-calculated map: addr to maskplen
 	def __getMaskMap():

@@ -262,7 +262,7 @@ class Actions(JailThread, Mapping):
 		if ip is None:
 			return self.__flushBan(db)
 		# Multiple IPs:
-		if isinstance(ip, list):
+		if isinstance(ip, (list, tuple)):
 			missed = []
 			cnt = 0
 			for i in ip:
@@ -284,6 +284,14 @@ class Actions(JailThread, Mapping):
 			# Unban the IP.
 			self.__unBan(ticket)
 		else:
+			# Multiple IPs by subnet or dns:
+			if not isinstance(ip, IPAddr):
+				ipa = IPAddr(ip)
+				if not ipa.isSingle: # subnet (mask/cidr) or raw (may be dns/hostname):
+					ips = filter(ipa.contains, self.__banManager.getBanList())
+					if ips:
+						return self.removeBannedIP(ips, db, ifexists)
+			# not found:
 			msg = "%s is not banned" % ip
 			logSys.log(logging.MSG, msg)
 			if ifexists:
@@ -699,13 +707,19 @@ class Actions(JailThread, Mapping):
 		"""Status of current and total ban counts and current banned IP list.
 		"""
 		# TODO: Allow this list to be printed as 'status' output
-		supported_flavors = ["basic", "cymru"]
+		supported_flavors = ["short", "basic", "cymru"]
 		if flavor is None or flavor not in supported_flavors:
 			logSys.warning("Unsupported extended jail status flavor %r. Supported: %s" % (flavor, supported_flavors))
 		# Always print this information (basic)
-		ret = [("Currently banned", self.__banManager.size()),
-			   ("Total banned", self.__banManager.getBanTotal()),
-			   ("Banned IP list", self.__banManager.getBanList())]
+		if flavor != "short":
+			banned = self.__banManager.getBanList()
+			cnt = len(banned)
+		else:
+			cnt = self.__banManager.size()
+		ret = [("Currently banned", cnt),
+			   ("Total banned", self.__banManager.getBanTotal())]
+		if flavor != "short":
+			ret += [("Banned IP list", banned)]
 		if flavor == "cymru":
 			cymru_info = self.__banManager.getBanListExtendedCymruInfo()
 			ret += \
